@@ -1,0 +1,108 @@
+---
+title: "NYPD Shooting Incident Data"
+author: "Jordan Pelletier"
+date: "2025-02-18"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Data Overview
+
+The dataset we are working with is the NYPD Shooting dataset, which contains detailed information about each shooting incident, including details like the location, date, time, and various demographic details about the perpetrators and victims.
+
+```{r load-libraries}
+# Loading necessary libraries
+library(dplyr)
+library(lubridate)
+
+# Read the dataset from the provided URL
+url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+NYPD_ShootingDF <- read.csv(url, stringsAsFactors = FALSE)
+
+# View the structure of the dataset
+str(NYPD_ShootingDF)
+
+# Summary of the dataset
+summary(NYPD_ShootingDF)
+
+# Convert OCCUR_DATE to Date
+NYPD_ShootingDF$OCCUR_DATE <- as.Date(NYPD_ShootingDF$OCCUR_DATE, format = "%m/%d/%Y")
+
+# Convert OCCUR_TIME to POSIXct
+NYPD_ShootingDF$OCCUR_TIME <- as.POSIXct(NYPD_ShootingDF$OCCUR_TIME, format = "%H:%M:%S")
+
+# Convert categorical columns to factors
+categorical_cols <- c("BORO", "LOC_OF_OCCUR_DESC", "LOC_CLASSFCTN_DESC", "LOCATION_DESC",
+                      "STATISTICAL_MURDER_FLAG", "PERP_AGE_GROUP", "PERP_SEX", "PERP_RACE", 
+                      "VIC_AGE_GROUP", "VIC_SEX", "VIC_RACE")
+
+NYPD_ShootingDF[categorical_cols] <- lapply(NYPD_ShootingDF[categorical_cols], as.factor)
+
+# Handle Missing Values in Categorical Columns
+for (col in categorical_cols) {
+  NYPD_ShootingDF[[col]] <- ifelse(is.na(NYPD_ShootingDF[[col]]) | NYPD_ShootingDF[[col]] == "", "Unknown", NYPD_ShootingDF[[col]])
+}
+
+# Handle Missing Values in Numeric Columns (Replace with Median)
+numeric_cols <- c("X_COORD_CD", "Y_COORD_CD", "Latitude", "Longitude")
+for (col in numeric_cols) {
+  median_value <- median(NYPD_ShootingDF[[col]], na.rm = TRUE)
+  NYPD_ShootingDF[[col]] <- ifelse(is.na(NYPD_ShootingDF[[col]]), median_value, NYPD_ShootingDF[[col]])
+}
+
+# Remove columns that are not necessary for analysis
+columns_to_remove <- c("Lon_Lat")
+NYPD_ShootingDF <- NYPD_ShootingDF[, !(names(NYPD_ShootingDF) %in% columns_to_remove)]
+
+# Replace NA values in JURISDICTION_CODE with 0 to handle missing values
+NYPD_ShootingDF$JURISDICTION_CODE[is.na(NYPD_ShootingDF$JURISDICTION_CODE)] <- 0
+
+# summary of clean data
+summary(NYPD_ShootingDF)
+```
+
+### Distribution of Shootings by Borough
+
+```{r plot distribution of shootings by Borough}
+# Load necessary libraries
+library(ggplot2)
+
+# Create a bar plot for the distribution of shootings by borough
+ggplot(NYPD_ShootingDF, aes(x = BORO)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Shootings Distribution by Borough",
+       x = "Borough",
+       y = "Number of Incidents") +
+  theme_minimal()
+```
+
+### Shootings by Year
+
+```{r plot shootings by year}
+# Convert OCCUR_DATE to Date format if not already
+NYPD_ShootingDF$OCCUR_DATE <- as.Date(NYPD_ShootingDF$OCCUR_DATE)
+
+# Create a time series plot for shooting incidents over time
+ggplot(NYPD_ShootingDF, aes(x = OCCUR_DATE)) +
+  geom_histogram(binwidth = 365, fill = "darkorange", color = "black") +
+  labs(title = "Shootings Over Time (Yearly)",
+       x = "Year",
+       y = "Number of Incidents") +
+  theme_minimal()
+```
+
+### Conclusion
+
+The project examines shooting incidents in New York City. Our analysis revealed patterns and trends including notable differences between boroughs. The visualization of these trends explored potential factors including the distribution of shootings such as location, age groups, and racial demographics.
+
+The analysis raised further questions abaout the underlying factors contributing to these patterns. These could include population density, socio-economic factors, and perhaps law-enforcement practices that could potentially influence shooting incidents. A next step could be to include datsets with this information.
+
+There are a few sources of bias that could affect our analysis such as Data Collection Bias, Geographical Bias, Data Imputation Bias, and Categorical Bias. 
+
+As far as personal bias, as a data analyst I acknowledge that personal bias can shape an approach to data cleaning, analysis, and result interpretation. My personal biases could arise from the framing of questions to focus on variables that seem most relevant to me. To mitigate bias, I must maintain objectivity, consider alternative perspectives, and ensure that this is reproducible. 
